@@ -17,6 +17,12 @@
  * @date 2020-06-18
  */
 
+#ifndef DFGM_FIR_H
+#define DFGM_FIR_H
+
 /********************************************************************************/
 /*        Finite impulse response (FIR) filtering functions for the DFGM        */
 /********************************************************************************/
+
+
+#endif /* DFGM_FIR_H_ */

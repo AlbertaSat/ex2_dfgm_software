@@ -16,3 +16,7 @@
  * @author Andrew Williams
  * @date 2020-06-18
  */
+
+int testFunction( ) {
+    return 100;
+}
