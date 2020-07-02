@@ -60,7 +60,7 @@ bool init_dfgm_config( struct dfgm_config_t* config )
 	// }
 
 	// config->stream = select_stream[STREAM_ENABLE_BYTE_LOCATION];
-	return true;
+	return false;
 }
 
 int testFunction( ) {
