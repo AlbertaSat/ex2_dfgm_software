@@ -18,10 +18,23 @@
  */
 
 #include <stdbool.h>
+#include <pthread.h> 
 // #include <libio.h> // for file
 // #include <sys/stat.h>
 
 #define DFGM_SELECT_FILE_LENGTH 1
+
+void* threadTester(void* arg) 
+{ 
+    unsigned long i = 0; 
+    printf("\n Job has started\n"); 
+  
+    for (i = 0; i < (0xFFFFFFFF); i++) 
+        ; 
+    printf("\n Job has finished\n"); 
+  
+    return NULL; 
+}
 
 bool init_dfgm_config( struct dfgm_config_t* config )
 {
@@ -35,10 +48,10 @@ bool init_dfgm_config( struct dfgm_config_t* config )
 	// config->stream = DFGM_DEFAULT_STREAM;
 
 	/* Create RTOS mutex. */
-	// new_mutex(config->lock);
-	// if( config->lock == NULL ) {
-	// 	return false;
-	// }
+	pthread_mutex_t lock;
+	if (pthread_mutex_init(&lock, NULL) != 0) {
+        return false; 
+    } 
 
 	// /* Open up selection file and cache the previous selection. */
 	// select_file = fopen(DFGM_SELECT_FILE_PATH, "r");
@@ -60,7 +73,7 @@ bool init_dfgm_config( struct dfgm_config_t* config )
 	// }
 
 	// config->stream = select_stream[STREAM_ENABLE_BYTE_LOCATION];
-	return false;
+	return true;
 }
 
 int testFunction( ) {
