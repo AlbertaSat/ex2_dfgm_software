@@ -35,10 +35,10 @@ bool init_dfgm_config( struct dfgm_config_t* config )
 	// config->stream = DFGM_DEFAULT_STREAM;
 
 	/* Create RTOS mutex. */
-	new_mutex(config->lock);
-	if( config->lock == NULL ) {
-		return false;
-	}
+	// new_mutex(config->lock);
+	// if( config->lock == NULL ) {
+	// 	return false;
+	// }
 
 	// /* Open up selection file and cache the previous selection. */
 	// select_file = fopen(DFGM_SELECT_FILE_PATH, "r");
