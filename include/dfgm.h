@@ -21,12 +21,29 @@
 #define DFGM_H
 
 #include <stdint.h>
-#include "dfgm_config.h"
+
+#include <FreeRTOS.h> // may not need both of these  
+#include "semphr.h"
+
+typedef xSemaphoreHandle mutex_t;
 
 #define DFGM_PACKET_SIZE 1248
 #define DFGM_FS 100
 
 #define DFGM_QUEUE_SIZE 2*4096
+
+typedef enum
+{
+	RAW_ENABLE = 0,			/* Raw data selected. */
+	FILTER_ENABLE = 1,		/* Filetered data selected. */
+	CONFIG_TIMEOUT			/* Timeout determining selected stream. */
+} dfgm_config_status_e;
+
+struct dfgm_config_t
+{
+	dfgm_config_status_e stream;
+	mutex_t lock;
+};
 
 /**
  * @struct dfgm_t
