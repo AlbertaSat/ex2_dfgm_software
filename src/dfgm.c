@@ -65,6 +65,6 @@ bool init_dfgm_config( struct dfgm_config_t* config )
 
 int testFunction( ) {
     struct dfgm_config_t* config;
-    return init_dfgm_config(config);
+    return init_dfgm_config(config) ? 1 : 0;
 	//
 }
