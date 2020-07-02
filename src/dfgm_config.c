@@ -18,20 +18,20 @@
  * @date 2020-06-18
  */
 
-#include <core_defines.h>
 #include <stdio.h>
-#include <portable_types.h>
-#include <dfgm/dfgm_config.h>
+#include <dfgm_config.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
 
-#define DFGM_SELECT_FILE_LENGTH 1
+#define DFGM_SELECT_FILE_LENGTH     1
 #define STREAM_ENABLE_BYTE_LOCATION 0
-#define CONFIG_LOCK_TIMEOUT (ONE_MS*50) /*50 ms*/
+#define CONFIG_LOCK_TIMEOUT         (50) /*50 ms*/
+#define MUTEX_BUSY                  false
+#define DFGM_SELECT_FILE_PATH "~/DFGM.txt"
 
-static bool_t dfgm_config_set( struct dfgm_config_t* config, dfgm_config_status_e status, long int location )
+static bool dfgm_config_set( struct dfgm_config_t* config, dfgm_config_status_e status, long int location )
 {
 	FILE* select_file;
 	DEV_ASSERT(config);
@@ -70,7 +70,7 @@ dfgm_config_status_e dfgm_config_get_stream( struct dfgm_config_t* config )
 }
 
 
-bool_t dfgm_config_set_stream( struct dfgm_config_t* config, dfgm_config_status_e status )
+bool dfgm_config_set_stream( struct dfgm_config_t* config, dfgm_config_status_e status )
 {
 	DEV_ASSERT(config);
 
@@ -87,7 +87,7 @@ bool_t dfgm_config_set_stream( struct dfgm_config_t* config, dfgm_config_status_
 	return true;
 }
 
-bool_t init_dfgm_config( struct dfgm_config_t* config )
+bool init_dfgm_config( struct dfgm_config_t* config )
 {
 	FILE* select_file;
 	char select_stream[DFGM_SELECT_FILE_LENGTH];
@@ -96,7 +96,7 @@ bool_t init_dfgm_config( struct dfgm_config_t* config )
 	struct stat file_stat;
 	DEV_ASSERT(config);
 
-	config->stream = DFGM_DEFAULT_STREAM;
+	config->stream = FILTER_ENABLE;
 
 	/* Create RTOS mutex. */
 	new_mutex(config->lock);
