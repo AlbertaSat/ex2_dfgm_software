@@ -87,6 +87,6 @@ struct __attribute__((packed)) dfgm_1Hz_file_t{
 	int16_t hk[12];
 };
 
-int testFunction();
+int testFunction2();
 
 #endif /* DFGM_H_ */

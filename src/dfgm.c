@@ -63,8 +63,8 @@ bool init_dfgm_config( struct dfgm_config_t* config )
 	return true;
 }
 
-int testFunction( ) {
+int testFunction2( ) {
     struct dfgm_config_t* config;
-    return no;//init_dfgm_config(config) ? 1 : 0;
+    return 0;//no;//init_dfgm_config(config) ? 1 : 0;
 	//
 }
