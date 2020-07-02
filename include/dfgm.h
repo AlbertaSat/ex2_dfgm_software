@@ -25,7 +25,7 @@
 // #include <FreeRTOS.h> // may not need both of these  
 // #include "semphr.h"
 
-typedef xSemaphoreHandle mutex_t;
+// typedef xSemaphoreHandle mutex_t;
 
 #define DFGM_PACKET_SIZE 1248
 #define DFGM_FS 100
@@ -42,7 +42,7 @@ typedef enum
 struct dfgm_config_t
 {
 	dfgm_config_status_e stream;
-	mutex_t lock;
+	// mutex_t lock;
 };
 
 /**
