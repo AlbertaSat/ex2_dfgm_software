@@ -22,8 +22,8 @@
 
 #include <stdint.h>
 
-#include <FreeRTOS.h> // may not need both of these  
-#include "semphr.h"
+// #include <FreeRTOS.h> // may not need both of these  
+// #include "semphr.h"
 
 typedef xSemaphoreHandle mutex_t;
 
