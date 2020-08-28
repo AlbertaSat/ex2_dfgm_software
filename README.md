@@ -2,8 +2,8 @@
 
 To be used as hardware drivers for the dfgm application code in the 'AlbertaSat/ex2_services' repository.
 
-dfgm_sim/dfgm_sim.py -> Python script to interact with TI board, used to simulate the data sent by the DFGM
-uhf_base             -> CCS project to run DFGM code on board
+dfgm_sim/dfgm_sim.py -> Python script to interact with TI board, used to simulate the data sent by the DFGM  
+uhf_base             -> CCS project to run DFGM code on board  
 
 Project includes SD card code but is not currently stable
 
