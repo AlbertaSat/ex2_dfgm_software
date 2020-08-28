@@ -2,9 +2,11 @@
 
 To be used as hardware drivers for the dfgm application code in the 'AlbertaSat/ex2_services' repository.
 
-dfgm.c        -> Core driver services (power, boom deployment, etc.)
-dfgm_config.c -> DFGM configuration
-dfgm_FIR.c    -> Finite impulse response filtering functions for the DFGM (downsampling, etc.)
+dfgm_sim/dfgm_sim.py -> Python script to interact with TI board, used to simulate the data sent by the DFGM
+uhf_base             -> CCS project to run DFGM code on board
+
+Project includes SD card code but is not currently stable
+
 
 # AlbertaSat - Open CubeSat Platform #
 
