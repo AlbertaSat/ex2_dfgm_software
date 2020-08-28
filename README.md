@@ -1,5 +1,11 @@
 ## DFGM hardware interface code
 
+To be used as hardware drivers for the dfgm application code in the 'AlbertaSat/ex2_services' repository.
+
+dfgm.c        -> Core driver services (power, boom deployment, etc.)
+dfgm_config.c -> DFGM configuration
+dfgm_FIR.c    -> Finite impulse response filtering functions for the DFGM (downsampling, etc.)
+
 # AlbertaSat - Open CubeSat Platform #
 
 This repository contains (or will contain) source code and relevant content for the Open CubeSat Platform (OCP) - an open source platform for Cube Satellites developed at the University of Alberta
