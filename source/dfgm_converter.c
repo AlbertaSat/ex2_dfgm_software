@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <task.h>
 #include "system.h"
+#include "redposix.h"
 
 #define BUFFER_SIZE 1248
 #define QUEUE_DEPTH 32
@@ -16,6 +17,10 @@
 
 #ifndef DFGM_SCI
 #define DFGM_SCI scilinREG
+#endif
+
+#ifndef PRINTF_SCI
+#define PRINTF_SCI scilinREG
 #endif
 
 static uint8_t dfgmBuffer[BUFFER_SIZE];
@@ -42,36 +47,12 @@ void dfgm_convert_mag(dfgm_packet_t *const data) {
 }
 
 void send_packet(dfgm_packet_t *packet) {
-    sciSend(DFGM_SCI, 1, (uint8_t *)&packet->dle);
-    sciSend(DFGM_SCI, 1, (uint8_t *)&packet->stx);
-    sciSend(DFGM_SCI, 1, (uint8_t *)&packet->pid);
-    sciSend(DFGM_SCI, 1, (uint8_t *)&packet->packet_type);
-    sciSend(DFGM_SCI, 2, (uint8_t *)&packet->packet_length);
-    sciSend(DFGM_SCI, 2, (uint8_t *)&packet->fs);
-    sciSend(DFGM_SCI, 4, (uint8_t *)&packet->pps_offset);
-
-    int i;
-    for (i = 0; i < 12; i++) {
-        sciSend(DFGM_SCI, 2, (uint8_t *)&packet->hk[i]);
-    }
-    for (i = 0; i < 100; i++) {
-        sciSend(DFGM_SCI, 4, (uint8_t *)&packet->X[i]);
-        sciSend(DFGM_SCI, 4, (uint8_t *)&packet->Y[i]);
-        sciSend(DFGM_SCI, 4, (uint8_t *)&packet->Z[i]);
-    }
-    sciSend(DFGM_SCI, 2, (uint8_t *)&packet->board_id);
-    sciSend(DFGM_SCI, 2, (uint8_t *)&packet->sensor_id);
-    sciSend(DFGM_SCI, 1, (uint8_t *)&packet->reservedA);
-    sciSend(DFGM_SCI, 1, (uint8_t *)&packet->reservedB);
-    sciSend(DFGM_SCI, 1, (uint8_t *)&packet->reservedC);
-    sciSend(DFGM_SCI, 1, (uint8_t *)&packet->reservedD);
-    sciSend(DFGM_SCI, 1, (uint8_t *)&packet->reservedE);
-    sciSend(DFGM_SCI, 1, (uint8_t *)&packet->etx);
-    sciSend(DFGM_SCI, 2, (uint8_t *)&packet->crc);
+    sciSend(PRINTF_SCI, sizeof(dfgm_packet_t), packet);
 }
 
 void dfgm_rx_task(void *pvParameters) {
     dfgm_packet_t rawDFGMData;
+    FILE *
     for (;;) {
         // receive packet from queue
         xQueueReceive(dfgmQueue, (void *)&rawDFGMData, portMAX_DELAY);
@@ -92,10 +73,15 @@ void dfgm_init(const sciBASE_t *sci) {
 }
 
 void dfgm_sciNotification(sciBASE_t *sci, unsigned flags) {
+    switch (flags) {
     // add dfgmBuffer to a queue
-    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-    xQueueSendToBackFromISR(dfgmQueue, &dfgmBuffer, &xHigherPriorityTaskWoken);
-    sciReceive(sci, BUFFER_SIZE, &dfgmBuffer);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-    return;
+    case SCI_RX_INT:
+        portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+        xQueueSendToBackFromISR(dfgmQueue, &dfgmBuffer, &xHigherPriorityTaskWoken);
+        sciReceive(sci, BUFFER_SIZE, &dfgmBuffer);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        break;
+    case SCI_TX_INT: break;
+    default: break;
+    }
 }

@@ -12,6 +12,12 @@
 #define ZADCScale -0.0302
 #define ZOffset 0
 
+typedef struct __attribute__((packed)) {
+    uint32_t X; // [xdac, xadc]
+    uint32_t Y; // [ydac, yadc]
+    uint32_t Z; // [zdac, zadc]
+} dfgm_data_tuple_t;
+
 typedef struct __attribute__((__packed__)) {
     uint8  dle;
     uint8  stx;
@@ -21,9 +27,7 @@ typedef struct __attribute__((__packed__)) {
     uint16 fs;
     uint32 pps_offset;
     uint16 hk[12];
-    uint32 X[100]; // [xdac, xadc]
-    uint32 Y[100]; // [ydac, yadc]
-    uint32 Z[100]; // [zdac, zadc]
+    dfgm_data_tuple_t tup[100];
     uint16 board_id;
     uint16 sensor_id;
     uint8  reservedA;
