@@ -1,6 +1,13 @@
 #ifndef DFGM_CONVERTER_H
 #define DFGM_CONVERTER_H
 
+#include <stdint.h>
+#include "HL_sci.h"
+/**
+ * File name convention
+ * ccc-xxxxxxxxxx
+ */
+
 // mag field constants
 #define XDACScale 1.757421875
 #define XADCScale -0.0353
@@ -47,7 +54,7 @@ typedef struct __attribute__((__packed__)) {
 void dfgm_convert_mag(dfgm_packet_t * const data);
 
 /**
- * @brief Send DFGM data to termincal via serial port
+ * @brief Send DFGM data to terminal via serial port
  * 
  * @param packet Data to be displayed
  */
@@ -55,10 +62,8 @@ void send_packet(dfgm_packet_t *packet);
 
 /**
  * @brief Initialize the DFGM interface
- * 
- * @param sci Serial port connected to the DFGM
  */
-void dfgm_init(const sciBASE_t *sci);
+void dfgm_init();
 
 /**
  * @brief DFGM interrupt handling hook
@@ -66,6 +71,6 @@ void dfgm_init(const sciBASE_t *sci);
  * @param sci 
  * @param flags 
  */
-static void dfgm_sciNotification(sciBASE_t *sci, unsigned flags);
+//static void dfgm_sciNotification(sciBASE_t *sci, unsigned flags);
 
 #endif /* DFGM_CONVERTER_H_ */

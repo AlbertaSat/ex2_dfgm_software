@@ -1,12 +1,14 @@
 #include "dfgm_converter.h"
-#include "sci.h"
-#include "sys_common.h"
+#include "HL_sci.h"
+//#include "hl_sys_common.h"
 #include <FreeRTOS.h>
-#include <queue.h>
+#include <os_queue.h>
 #include <stdlib.h>
-#include <task.h>
+#include <os_task.h>
 #include "system.h"
 #include "redposix.h"
+#include <time.h>
+#include "os_semphr.h"
 
 #define BUFFER_SIZE 1248
 #define QUEUE_DEPTH 32
@@ -23,65 +25,94 @@
 #define PRINTF_SCI scilinREG
 #endif
 
-static uint8_t dfgmBuffer[BUFFER_SIZE];
+/**
+ * files:
+ *  last_file.txt
+ *  dfgm_<unix_timestamp>.dat
+ *  data_lookup.dat
+ */
+
+#define SAMPLES_PER_FILE 10000 // this will get around 62 files per week of runtime
+#define RED_TRANSACT_INTERVAL 100
+
+static uint8_t dfgmBuffer;
 static xQueueHandle dfgmQueue;
+static SemaphoreHandle_t tx_semphr;
+
+typedef struct __attribute__((packed)) {
+    time_t time;
+    dfgm_packet_t pkt;
+} dfgm_data_t;
 
 void dfgm_convert_mag(dfgm_packet_t *const data) {
 
     // convert raw data to magnetic field data
     int i;
     for (i = 0; i < 100; i++) {
-        short xdac = (data->X[i]) >> 16;
-        short xadc = ((data->X[i]) % (1 << 16));
-        short ydac = (data->Y[i]) >> 16;
-        short yadc = ((data->Y[i]) % (1 << 16));
-        short zdac = (data->Z[i]) >> 16;
-        short zadc = ((data->Z[i]) % (1 << 16));
+        short xdac = (data->tup[i].X) >> 16;
+        short xadc = ((data->tup[i].X) % (1 << 16));
+        short ydac = (data->tup[i].Y) >> 16;
+        short yadc = ((data->tup[i].Y) % (1 << 16));
+        short zdac = (data->tup[i].Z) >> 16;
+        short zadc = ((data->tup[i].Z) % (1 << 16));
         float X = (XDACScale * (float)xdac + XADCScale * (float)xadc + XOffset);
         float Y = (YDACScale * (float)ydac + YADCScale * (float)yadc + YOffset);
         float Z = (ZDACScale * (float)zdac + ZADCScale * (float)zadc + ZOffset);
-        data->X[i] = *(uint32_t *)&X;
-        data->Y[i] = *(uint32_t *)&Y;
-        data->Z[i] = *(uint32_t *)&Z;
+        data->tup[i].X = *(uint32_t *)&X;
+        data->tup[i].Y = *(uint32_t *)&Y;
+        data->tup[i].Z = *(uint32_t *)&Z;
     }
 }
 
 void send_packet(dfgm_packet_t *packet) {
-    sciSend(PRINTF_SCI, sizeof(dfgm_packet_t), packet);
+    sciSend(DFGM_SCI, sizeof(dfgm_packet_t), packet);
 }
 
 void dfgm_rx_task(void *pvParameters) {
-    dfgm_packet_t rawDFGMData;
-    FILE *
+    static dfgm_data_t dat = {0};
+    int received = 0;
     for (;;) {
         // receive packet from queue
-        xQueueReceive(dfgmQueue, (void *)&rawDFGMData, portMAX_DELAY);
+        while (received < sizeof(dfgm_packet_t)) {
+            uint8_t *pkt = (uint8_t *)&(dat.pkt);
+            xQueueReceive(dfgmQueue, &(pkt[received]), portMAX_DELAY);
+            received++;
+        }
+
+        received = 0;
+        memset(&dat, 0, sizeof(dfgm_data_t));
 
         // convert raw data to magnetic field data
-        dfgm_convert_mag(&rawDFGMData);
+        dfgm_convert_mag(&(dat.pkt));
+        //RTCMK_GetUnix(&(dat.time));
 
-        // TOO: Do something with the data!!!
+        send_packet(&(dat.pkt));
     }
 }
 
-void dfgm_init(const sciBASE_t *sci) {
-    dfgmQueue = xQueueCreate(QUEUE_DEPTH, BUFFER_SIZE);
+void dfgm_init() {
+    TaskHandle_t dfgm_rx_handle;
+    dfgmQueue = xQueueCreate(QUEUE_DEPTH, sizeof(uint8_t));
+    tx_semphr = xSemaphoreCreateBinary();
     xTaskCreate(dfgm_rx_task, "DFGM RX", 256, NULL, DFGM_RX_PRIO,
-                NULL); // TODO: keep prioriy in a header somewhere
-    sciReceive(sci, BUFFER_SIZE, &dfgmBuffer);
+                &dfgm_rx_handle);
+    sciReceive(DFGM_SCI, 1, &dfgmBuffer);
     return;
 }
 
 void dfgm_sciNotification(sciBASE_t *sci, unsigned flags) {
+    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+
     switch (flags) {
-    // add dfgmBuffer to a queue
     case SCI_RX_INT:
-        portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
         xQueueSendToBackFromISR(dfgmQueue, &dfgmBuffer, &xHigherPriorityTaskWoken);
-        sciReceive(sci, BUFFER_SIZE, &dfgmBuffer);
+        sciReceive(sci, 1, &dfgmBuffer);
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         break;
-    case SCI_TX_INT: break;
+    case SCI_TX_INT:
+        xSemaphoreGiveFromISR(tx_semphr, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        break;
     default: break;
     }
 }
