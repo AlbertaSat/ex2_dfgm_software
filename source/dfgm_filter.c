@@ -20,10 +20,13 @@
 
 #include "dfgm_filter.h"
 #include "FreeRTOS.h"
-#include "sci.h"
+#include "HL_sci.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "system.h"
+
+#define scilinREG PRINTF_SCI
 
 double dummy;
 double dumcomp;
