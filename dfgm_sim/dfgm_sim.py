@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 
   Copyright (C) 2015  University of Alberta
@@ -26,13 +28,14 @@ import time
 ############################# Initialization #############################
 try:
     # Open Serial Port
-    serialPort = serial.Serial(port = "COM5",
-                            baudrate=115200,
+    serialPort = serial.Serial(port = "/dev/ttyUSB0",
+                            baudrate=9600,
                             bytesize=8,
                             timeout=0.5,
-                            stopbits=serial.STOPBITS_ONE)
+                            stopbits=serial.STOPBITS_TWO)
 except:
     print("Error opening serial port.")
+    exit(1)
 
 # confirm connection
 print("Connected to " + serialPort.name + " at " + str(serialPort.baudrate) + " baud...")
@@ -63,7 +66,7 @@ while(1):
                   str(round(struct.unpack('>f', serialString[(40+(12*i)):(44+(12*i))])[0], 2))+", "+
                   str(round(struct.unpack('>f', serialString[(44+(12*i)):(48+(12*i))])[0], 2))+")")
         i+=1
-
+    time.sleep(1);
 ############################# CREATE MAG DATA FILE #############################
 # # Open DFGM data file
 # dfgm_file = open("0c4R0196.bin", "rb")
