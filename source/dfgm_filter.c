@@ -68,7 +68,7 @@ double filter[81] = {
 
 struct SECOND buffer[2];
 struct SECOND *sptr[2];
-struct SECOND *g_ptr;
+//struct SECOND *g_ptr;
 
 //// Unused function
 //int main_filter(int argc, char **argv) {
@@ -280,20 +280,22 @@ void save_second(struct SECOND *second, char * filename) {
     // open or create file
     int32_t dataFile;
     dataFile = red_open(filename, RED_O_WRONLY | RED_O_CREAT | RED_O_APPEND);
-    if (iErr == -1) {
+    if (dataFile == -1) {
         printf("Unexpected error %d from red_open() in save_second()\r\n", (int)red_errno);
         exit(red_errno);
     }
 
-    // build string to save from data in second
-    char dataSample[100];
-    sprintf(dataSample, " %d %d %d\n", second->Xfilt, second->Yfilt, second->Zfilt);
+    // build string to save using data in second
+    char dataSample[50];
+    sprintf(dataSample, "%d %d %d\n", second->Xfilt, second->Yfilt, second->Zfilt);
 
     // save 1 Hz sample
     iErr = red_write(dataFile, dataSample, strlen(dataSample));
     if (iErr == -1) {
         printf("Unexpected error %d from red_write() in save_second()\r\n", (int)red_errno);
         exit(red_errno);
+    } else {
+        printf("Second saved to %s", filename);
     }
 
     // close file
@@ -305,40 +307,22 @@ void save_second(struct SECOND *second, char * filename) {
 }
 
 void convert_100Hz_to_1Hz(char * filename100Hz, char * filename1Hz) {
-    /*------------------- Read the file into a string ------------------*/
-    // Assumes filesystem is already initialized, formatted, and mounted
+    /*------------------- Initialization ------------------*/
+    // Assumes file system is already initialized, formatted, and mounted
     int32_t iErr;
 
     // open file
-    int32_t dataFile;
-    dataFile = red_open(filename100Hz, RED_O_RDONLY);
-    if (iErr == -1) {
-        printf("Unexpected error %d from red_open() filter\r\n", (int)red_errno);
+    int32_t dataFile100Hz;
+    dataFile100Hz = red_open(filename100Hz, RED_O_RDONLY);
+    if (dataFile100Hz == -1) {
+        printf("Unexpected error %d from red_open() in filter\r\n", (int)red_errno);
         exit(red_errno);
     }
 
-    // read data to string
-    char * data100Hz = (char *)pvPortMalloc(100000*sizeof(char));
-    iErr = red_read(dataFile, data100Hz, 100000);
-    if (iErr == -1) {
-       printf("Unexpected error %d from red_read() filter\r\n", (int)red_errno);
-       exit(red_errno);
-    }
-
-    // close file
-    iErr = red_close(dataFile);
-    if (iErr == -1) {
-        printf("Unexpected error %d from red_close() filter\r\n", (int)red_errno);
-        exit(red_errno);
-    }
-
-    /*------------------- Parse & convert packet to SECOND, then filter & save new 1 Hz sample ------------------*/
-    // Note that filtering takes in one packet at a time, but requires 2 packets to apply the filter
-
-    // get the first value in the file via a token
-    // all sequential values can be read by using NULL as the string name in strtok()
-    char * value = strtok(data100Hz, " ");
-    int firstValueOfPacketFlag = 1;
+    // initialize variables for string building
+    char line[50] = {0};
+    char c;
+    int i = 0;
 
     // a SECOND struct contains both the 100 X-Y-Z samples and the 1 filtered X-Y-Z sample
     // sptr probably stands for "second pointer"
@@ -347,50 +331,67 @@ void convert_100Hz_to_1Hz(char * filename100Hz, char * filename1Hz) {
 
     // There must be 2 packets of data before filtering can start
     int firstPacketFlag = 1;
-    int count = 0;
 
-    // repeat until there are no more packets left to read in the file
-    while(value != NULL) {
-        /*---------------------- Parse & convert one packet, then store into a second ----------------------*/
-        // 3 #s from file = 1 X-Y-Z sample, 100 X-Y-Z samples = 1 packet, 300 #s from file = 1 packet
-        for (int sample = 0; sample < 100; sample++) {
-            // For distinguishing what value the packet starts with
-            if (firstValueOfPacketFlag) {
-                sptr[1]->X[sample] = strtod(value, NULL);
-                firstValueOfPacketFlag = 0;
-                count += 1;
+    /*------------------- Read packets line by line (sample by sample) ------------------*/
+
+    // Read the first character
+    int bytes_read = red_read(dataFile100Hz, &c, 1);
+    if (bytes_read == -1) {
+        printf("Unexpected error %d from red_read() in filter\r\n", (int)red_errno);
+        exit(red_errno);
+    } else if (bytes_read == 0) {
+        printf("%s is empty!\n", filename100Hz);
+    }
+
+    // Read file line by line
+    while (bytes_read != 0) {
+        // Assumes there are 100 samples per packet in the file
+        int sample = 0;
+        while (sample < 100) {
+            // Reads one sample containing 3 numbers for X, Y, Z mag. coords
+            if (c != '\n') {
+                line[i] = c;
+                i += 1;
+                bytes_read = red_read(dataFile100Hz, &c, 1);
             } else {
-                value = strtok(NULL, " ");
-                sptr[1]->X[sample] = strtod(value, NULL);
-                count += 1;
+                line[i] = '\0';
+
+                // Parse, convert, and store coords
+                char * token;
+                token = strtok(line, " ");
+                sptr[1]->X[sample] = strtod(token, NULL);
+
+                token = strtok(NULL, " ");
+                sptr[1]->Y[sample] = strtod(token, NULL);
+
+                token = strtok(NULL, " ");
+                sptr[1]->Z[sample] = strtod(token, NULL);
+
+                // Move onto next sample
+                memset(line, 0, sizeof(line));
+                i = 0;
+                sample += 1;
+                bytes_read = red_read(dataFile100Hz, &c, 1);
             }
-
-            value = strtok(NULL, " ");
-            sptr[1]->Y[sample] = strtod(value, NULL);
-            count += 1;
-
-            value = strtok(NULL, " ");
-            sptr[1]->Z[sample] = strtod(value, NULL);
-            count += 1;
         }
-
-        // strtok returns NULL if there are no more tokens that can be processed (i.e. EOF is reached)
-        value = strtok(NULL, " ");
-        firstValueOfPacketFlag = 1;
 
         /*---------------------- Apply filter and save filtered sample to a file ----------------------*/
         if (firstPacketFlag) {
-            // Ensures there are 2 packets in the buffer before filtering
+            // Ensures that there are at least 2 packets in the buffer before filtering
             shift_sptr();
             firstPacketFlag = 0;
         } else {
             apply_filter();
             save_second(sptr[1], filename1Hz);
-            printf("second saved");
             shift_sptr();
         }
     }
 
-    // Free memory
-    vPortFree(data100Hz);
+    printf("Filtering data to 1 Hz complete.\n");
+
+    iErr = red_close(dataFile100Hz);
+    if (iErr == -1) {
+        printf("Unexpected error %d from red_close() in filter\r\n", (int)red_errno);
+        exit(red_errno);
+    }
 }

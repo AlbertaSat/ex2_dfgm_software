@@ -95,35 +95,34 @@ void dfgm_convert_HK(dfgm_packet_t *const data) {
 void save_packet(dfgm_packet_t *data, char *filename) {
     int32_t iErr;
 
-    // For debugging purposes
-    printf("Saving packet...\n");
-
     // open or create file
     int32_t dataFile;
-    dataFile = red_open(filename, RED_O_RDWR | RED_O_CREAT | RED_O_APPEND);
+    dataFile = red_open(filename, RED_O_WRONLY | RED_O_CREAT | RED_O_APPEND);
     if (dataFile == -1) {
         printf("Unexpected error %d from red_open() in save_packet()\r\n", (int)red_errno);
         exit(red_errno);
     }
 
     // Save samples line by line
-    char dataSample[100];
+    char dataSample[50];
     for(int i = 0; i < 100; i++) {
         // Build string to save
         memset(dataSample, 0, sizeof(dataSample));
 
         // build string for only magnetic field data
         // Note that the first char should be a space (needed for parsing successive samples)
-        sprintf(dataSample, " %d %d %d\n",
+        sprintf(dataSample, "%d %d %d\n",
                 data->tup[i].X, data->tup[i].Y, data->tup[i].Z);
 
         // Save string to file
-        iErr = red_write(dataFile, dataSample, strlen(dataSample)); // throws error 9 - RED_EBADF (bad file number)
+        iErr = red_write(dataFile, dataSample, strlen(dataSample));
         if (iErr == -1) {
             printf("Unexpected error %d from red_write() in save_packet()\r\n", (int)red_errno);
             exit(red_errno);
         }
     }
+
+    printf("Packet saved\n");
 
     // close file
     iErr = red_close(dataFile);
@@ -139,23 +138,40 @@ void print_file(char* filename) {
     // open file
     int32_t dataFile;
     dataFile = red_open(filename, RED_O_RDONLY);
-    if (iErr == -1) {
+    if (dataFile == -1) {
         printf("Unexpected error %d from red_open() in print_file()\r\n", (int)red_errno);
         exit(red_errno);
     }
 
-    // read & print data
-    char * data = (char *)pvPortMalloc(100000*sizeof(char));
-    iErr = red_read(dataFile, data, 100000);
-    if (iErr == -1) {
+    // initialize variables for string building
+    char line[50] = {0};
+    char c;
+    int i = 0;
+
+    // Read the first character
+    int bytes_read = red_read(dataFile, &c, 1);
+    if (bytes_read == -1) {
         printf("Unexpected error %d from red_read() in print_file()\r\n", (int)red_errno);
         exit(red_errno);
-    }
-    else {
-        printf("%s\n", data);
+    } else if (bytes_read == 0) {
+        printf("%s is empty!\n", filename);
     }
 
-    printf(strlen(*data));
+    // Print file line by line using characters to build lines
+    while (bytes_read != 0) {
+        if (c != '\n') {
+            line[i] = c;
+            i += 1;
+            bytes_read = red_read(dataFile, &c, 1);
+        } else {
+            line[i] = c;
+            line[i + 1] = '\0';
+            printf(line); // print line to terminal
+            memset(line, 0, sizeof(line));
+            i = 0;
+            bytes_read = red_read(dataFile, &c, 1);
+        }
+    }
 
     // close file
     iErr = red_close(dataFile);
@@ -163,10 +179,6 @@ void print_file(char* filename) {
         printf("Unexpected error %d from red_close() in print_file()\r\n", (int)red_errno);
         exit(red_errno);
     }
-
-    // Free memory
-    vPortFree(data);
-
 }
 
 void print_packet(dfgm_packet_t * data) {
@@ -183,15 +195,22 @@ void print_packet(dfgm_packet_t * data) {
 
 void clear_file(char* filename) {
     int32_t iErr;
+    int32_t dataFile;
 
-    // For debugging purposes
-    printf("Clearing %s\n", filename);
-
-    // Delete the specified file
-    iErr = red_unlink(filename);
-    if (iErr == -1) {
-        printf("Unexpected error %d from red_unlink() in clear_file()\r\n", (int)red_errno);
+    // Only delete the file if it exists
+    dataFile = red_open(filename, RED_O_RDONLY);
+    if (dataFile != -1) {
+        iErr = red_unlink(filename);
+        if (iErr == -1) {
+            printf("Unexpected error %d from red_unlink() in clear_file()\r\n", (int)red_errno);
+            exit(red_errno);
+        } else {
+            printf("%s cleared\n", filename);
+        }
+    } else {
+        printf("%s doesn't exist!\n", filename);
     }
+
 }
 
 void send_packet(dfgm_packet_t *packet) {
@@ -204,7 +223,7 @@ void dfgm_rx_task(void *pvParameters) {
     char input;
     int32_t iErr = 0;
 
-    // Set up filesystem before task is actually run
+    // Set up file system before task is actually run
 
     const char *pszVolume0 = gaRedVolConf[0].pszPathPrefix;
 
@@ -231,6 +250,8 @@ void dfgm_rx_task(void *pvParameters) {
 
     clear_file("high_rate_DFGM_data");
     clear_file("survey_rate_DFGM_data");
+    clear_file("high_rate_DFGM_data.txt");
+    clear_file("survey_rate_DFGM_data.txt");
 
     for (;;) {
         /*---------------------------------------------- Test 1A ----------------------------------------------*/
@@ -288,13 +309,13 @@ void dfgm_rx_task(void *pvParameters) {
             dfgm_convert_HK(&(dat.pkt));
 
             // save data
-            save_packet(&(dat.pkt), "high_rate_DFGM_data");
+            save_packet(&(dat.pkt), "high_rate_DFGM_data.txt");
 
             secondsPassed += 1;
         }
 
         // print 100 Hz data
-        print_file("high_rate_DFGM_data");
+        print_file("high_rate_DFGM_data.txt");
 
         // Place a breakpoint here
         printf("%s\n", "Test 1B complete.");
@@ -310,14 +331,14 @@ void dfgm_rx_task(void *pvParameters) {
         // Place a breakpoint here
         printf("%s\n", "Displaying 1 Hz data: ");
 
-        convert_100Hz_to_1Hz("high_rate_DFGM_data", "survey_rate_DFGM_data");
-        //print_file("survey_rate_DFGM_data");
+        convert_100Hz_to_1Hz("high_rate_DFGM_data.txt", "survey_rate_DFGM_data.txt");
+        //print_file("survey_rate_DFGM_data.txt");
 
         // Place a breakpoint here
         printf("%s\n", "Test 1C complete.");
 
-        clear_file("high_rate_DFGM_data");
-        clear_file("survey_rate_DFGM_data");
+        clear_file("high_rate_DFGM_data.txt");
+        clear_file("survey_rate_DFGM_data.txt");
     }
 }
 
