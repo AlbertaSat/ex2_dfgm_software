@@ -290,7 +290,7 @@ void dfgm_rx_task(void *pvParameters) {
         //printf("%s\n", "Starting test 1B...");
 
         int secondsPassed = 0;
-        int requiredRuntime = 1; // in seconds
+        int requiredRuntime = 2; // in seconds
         while(secondsPassed < requiredRuntime) {
             // receive packet from queue
             memset(&dat, 0, sizeof(dfgm_data_t));
@@ -339,6 +339,9 @@ void dfgm_rx_task(void *pvParameters) {
 
         clear_file("high_rate_DFGM_data.txt");
         clear_file("survey_rate_DFGM_data.txt");
+//        while(1){
+//            int x = 0;
+//        }
     }
 }
 
