@@ -295,7 +295,7 @@ void save_second(struct SECOND *second, char * filename) {
         printf("Unexpected error %d from red_write() in save_second()\r\n", (int)red_errno);
         exit(red_errno);
     } else {
-        printf("Second saved to %s", filename);
+        printf("Second saved to %s\n", filename);
     }
 
     // close file

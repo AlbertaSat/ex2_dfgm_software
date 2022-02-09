@@ -78,9 +78,9 @@ void dfgm_convert_mag(dfgm_packet_t *const data) {
         float X = (XDACScale * (float)xdac + XADCScale * (float)xadc + XOffset);
         float Y = (YDACScale * (float)ydac + YADCScale * (float)yadc + YOffset);
         float Z = (ZDACScale * (float)zdac + ZADCScale * (float)zadc + ZOffset);
-        data->tup[i].X = (*(uint32_t *)&X)/1000000000;
-        data->tup[i].Y = (*(uint32_t *)&Y)/1000000000;
-        data->tup[i].Z = (*(uint32_t *)&Z)/1000000000;
+        data->tup[i].X = (*(uint32_t *)&X);
+        data->tup[i].Y = (*(uint32_t *)&Y);
+        data->tup[i].Z = (*(uint32_t *)&Z);
     }
 }
 
@@ -200,6 +200,14 @@ void clear_file(char* filename) {
     // Only delete the file if it exists
     dataFile = red_open(filename, RED_O_RDONLY);
     if (dataFile != -1) {
+        // close file before deleting file
+        iErr = red_close(dataFile);
+        if (iErr == -1) {
+            printf("Unexpected error %d from red_close() in clear_file()\r\n", (int)red_errno);
+            exit(red_errno);
+        }
+
+        // delete file
         iErr = red_unlink(filename);
         if (iErr == -1) {
             printf("Unexpected error %d from red_unlink() in clear_file()\r\n", (int)red_errno);
@@ -248,8 +256,8 @@ void dfgm_rx_task(void *pvParameters) {
         exit(red_errno);
     }
 
-    clear_file("high_rate_DFGM_data");
-    clear_file("survey_rate_DFGM_data");
+    //clear_file("high_rate_DFGM_data");
+    //clear_file("survey_rate_DFGM_data");
     clear_file("high_rate_DFGM_data.txt");
     clear_file("survey_rate_DFGM_data.txt");
 
@@ -287,7 +295,7 @@ void dfgm_rx_task(void *pvParameters) {
 
         /*---------------------------------------------- Test 1B ----------------------------------------------*/
 
-        //printf("%s\n", "Starting test 1B...");
+        printf("%s\n", "Starting test 1B...");
 
         int secondsPassed = 0;
         int requiredRuntime = 2; // in seconds
@@ -324,24 +332,23 @@ void dfgm_rx_task(void *pvParameters) {
 
         printf("%s\n", "Starting test 1C...");
 
-        printf("%s\n", "Displaying 10 Hz data: ");
 //        convert_100Hz_to_10Hz("high_rate_DFGM_data.txt", "medium_rate_DFGM_data.txt");
+        printf("%s\n", "Displaying 10 Hz data: ");
 //        print_file("medium_rate_DFGM_data.txt");
 
-        // Place a breakpoint here
-        printf("%s\n", "Displaying 1 Hz data: ");
-
         convert_100Hz_to_1Hz("high_rate_DFGM_data.txt", "survey_rate_DFGM_data.txt");
-        //print_file("survey_rate_DFGM_data.txt");
+        printf("%s\n", "Displaying 1 Hz data: ");
+        print_file("survey_rate_DFGM_data.txt");
 
-        // Place a breakpoint here
         printf("%s\n", "Test 1C complete.");
 
         clear_file("high_rate_DFGM_data.txt");
         clear_file("survey_rate_DFGM_data.txt");
-//        while(1){
-//            int x = 0;
-//        }
+
+        // a budget breakpoint since CCS's breakpoints cause packets to be read with an offset of 1 byte
+        while(1){
+            int x = 0;
+        }
     }
 }
 
