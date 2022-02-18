@@ -92,7 +92,7 @@ void dfgm_convert_HK(dfgm_packet_t *const data) {
     };
 }
 
-void save_packet(dfgm_packet_t *data, char *filename) {
+void save_packet(dfgm_data_t *data, char *filename) {
     int32_t iErr;
 
     // open or create file
@@ -103,19 +103,16 @@ void save_packet(dfgm_packet_t *data, char *filename) {
         exit(red_errno);
     }
 
-    // Save samples line by line
-    char dataSample[50];
-    for(int i = 0; i < 100; i++) {
-        // Build string to save
-        memset(dataSample, 0, sizeof(dataSample));
+    // Save only mag field data sample by sample w/ timestamps
+    dfgm_data_sample_t dataSample = {0};
+    for (int i = 0; i < 100; i++) {
+        memset(&dataSample, 0, sizeof(dfgm_data_sample_t));
+        dataSample.time = data->time;
+        dataSample.X = (data->pkt).tup[i].X;
+        dataSample.Y = (data->pkt).tup[i].Y;
+        dataSample.Z = (data->pkt).tup[i].Z;
 
-        // build string for only magnetic field data
-        // Note that the first char should be a space (needed for parsing successive samples)
-        sprintf(dataSample, "%d %d %d\n",
-                data->tup[i].X, data->tup[i].Y, data->tup[i].Z);
-
-        // Save string to file
-        iErr = red_write(dataFile, dataSample, strlen(dataSample));
+        iErr = red_write(dataFile, data, sizeof(dfgm_data_sample_t));
         if (iErr == -1) {
             printf("Unexpected error %d from red_write() in save_packet()\r\n", (int)red_errno);
             exit(red_errno);
@@ -143,34 +140,22 @@ void print_file(char* filename) {
         exit(red_errno);
     }
 
-    // initialize variables for string building
-    char line[50] = {0};
-    char c;
-    int i = 0;
-
-    // Read the first character
-    int bytes_read = red_read(dataFile, &c, 1);
+    // Error check reading the first sample
+    dfgm_data_sample_t dataSample = {0};
+    memset(&dataSample, 0, sizeof(dfgm_data_sample_t));
+    bytes_read = red_read(dataFile, &dataSample, sizeof(dfgm_data_sample_t));
     if (bytes_read == -1) {
-        printf("Unexpected error %d from red_read() in print_file()\r\n", (int)red_errno);
+        printf("Unexpected error %d from red_read() in print_file\r\n", (int) red_errno);
         exit(red_errno);
-    } else if (bytes_read == 0) {
+    } else if (bytes read == 0) {
         printf("%s is empty!\n", filename);
     }
 
-    // Print file line by line using characters to build lines
+    // Print file sample by sample
     while (bytes_read != 0) {
-        if (c != '\n') {
-            line[i] = c;
-            i += 1;
-            bytes_read = red_read(dataFile, &c, 1);
-        } else {
-            line[i] = c;
-            line[i + 1] = '\0';
-            printf(line); // print line to terminal
-            memset(line, 0, sizeof(line));
-            i = 0;
-            bytes_read = red_read(dataFile, &c, 1);
-        }
+        printf("%ld %d %d %d\n", dataSample.time, dataSample.X, dataSample.Y, dataSample.Z);
+        memset(&dataSample, 0, sizeof(dfgm_data_sample_t));
+        bytes_read = red_read(dataFile, &dataSample, sizeof(dfgm_data_sample_t));
     }
 
     // close file

@@ -285,17 +285,24 @@ void save_second(struct SECOND *second, char * filename) {
         exit(red_errno);
     }
 
-    // build string to save using data in second
-    char dataSample[50];
-    sprintf(dataSample, "%d %d %d\n", second->Xfilt, second->Yfilt, second->Zfilt);
+    // Save the sample as a sample struct
+    dfgm_data_sample_t dataSample = {0};
+    memset(&dataSample, 0, sizeof(dfgm_data_sample_t));
+    dataSample.time = second->time;
 
-    // save 1 Hz sample
-    iErr = red_write(dataFile, dataSample, strlen(dataSample));
+    // Preserve float characteristics
+    float X = second->Xfilt;
+    float Y = second->Yfilt;
+    float Z = second->Zfilt;
+    dataSample.X = (*(uint32_t *)&X);
+    dataSample.Y = (*(uint32_t *)&Y);
+    dataSample.Z = (*(uint32_t *)&Z);
+
+    // Write sample to file
+    iErr = red_write(dataFile, data, sizeof(dfgm_data_sample_t));
     if (iErr == -1) {
-        printf("Unexpected error %d from red_write() in save_second()\r\n", (int)red_errno);
+        printf("Unexpected error %d from red_write() in save_packet()\r\n", (int)red_errno);
         exit(red_errno);
-    } else {
-        printf("Second saved to %s\n", filename);
     }
 
     // close file
@@ -319,11 +326,6 @@ void convert_100Hz_to_1Hz(char * filename100Hz, char * filename1Hz) {
         exit(red_errno);
     }
 
-    // initialize variables for string building
-    char line[50] = {0};
-    char c;
-    int i = 0;
-
     // a SECOND struct contains both the 100 X-Y-Z samples and the 1 filtered X-Y-Z sample
     // sptr probably stands for "second pointer"
     sptr[0] = &buffer[0];
@@ -332,57 +334,41 @@ void convert_100Hz_to_1Hz(char * filename100Hz, char * filename1Hz) {
     // There must be 2 packets of data before filtering can start
     int firstPacketFlag = 1;
 
-    /*------------------- Read packets line by line (sample by sample) ------------------*/
+    /*------------------- Read packets sample by sample ------------------*/
+    dfgm_data_sample_t dataSample = {0};
+    int EOF_reached = 0;
 
-    // Read the first character
-    int bytes_read = red_read(dataFile100Hz, &c, 1);
-    if (bytes_read == -1) {
-        printf("Unexpected error %d from red_read() in filter\r\n", (int)red_errno);
-        exit(red_errno);
-    } else if (bytes_read == 0) {
-        printf("%s is empty!\n", filename100Hz);
-    }
+    // Read file sample by sample until EOF is reached
+    while(1) {
+        // Assume there are 100 samples per packet in the file
+        for (int sample = 0; sample < 100; sample++) {
+            memset(&dataSample, 0, sizeof(dfgm_data_sample_t));
 
-    // Read file line by line
-    while (bytes_read != 0) {
-        // Assumes there are 100 samples per packet in the file
-        int sample = 0;
-        while (sample < 100) {
-            // Reads one sample containing 3 numbers for X, Y, Z mag. coords
-            if (c != '\n') {
-                line[i] = c;
-                i += 1;
-                bytes_read = red_read(dataFile100Hz, &c, 1);
-            } else {
-                line[i] = '\0';
-
-                // Parse, convert, and store coords
-                char * token;
-                token = strtok(line, " ");
-                sptr[1]->X[sample] = strtod(token, NULL);
-
-                token = strtok(NULL, " ");
-                sptr[1]->Y[sample] = strtod(token, NULL);
-
-                token = strtok(NULL, " ");
-                sptr[1]->Z[sample] = strtod(token, NULL);
-
-                // Move onto next sample
-                memset(line, 0, sizeof(line));
-                i = 0;
-                sample += 1;
-                bytes_read = red_read(dataFile100Hz, &c, 1);
+            bytes_read = red_read(dataFile100Hz, &dataSample, sizeof(dfgm_data_sample_t));
+            if (bytes_read == -1) {
+                printf("Unexpected error %d from first red_read() in print_file\r\n", (int) red_errno);
+                exit(red_errno);
+            } else if (bytes_read == 0) {
+                EOF_reached = 1;
+                break;
             }
+
+            // Save sample
+            sptr[1]->time = dataSample.time;
+            sptr[1]->X[sample] = dataSample.X;
+            sptr[1]->Y[sample] = dataSample.Y;
+            sptr[1]->Z[sample] = dataSample.Z;
         }
 
-        /*---------------------- Apply filter and save filtered sample to a file ----------------------*/
-        if (firstPacketFlag) {
-            // Ensures that there are at least 2 packets in the buffer before filtering
-            shift_sptr();
+        if (EOF_reached) {
+            break;
+        } else if (firstPacketFlag) {
+            // Ensure that there are at least 2 packets in the buffer before filtering
             firstPacketFlag = 0;
+            shift_sptr();
         } else {
             apply_filter();
-            save_second(sptr[1], filename1Hz);
+            save_second(sptr[1], filename1Hz)
             shift_sptr();
         }
     }

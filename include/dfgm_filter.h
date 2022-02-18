@@ -1,8 +1,10 @@
 #ifndef DFGM_FILTER_H
 #define DFGM_FILTER_H
 
+#include <time.h>
+
 struct SECOND {
-    char datetime[19];
+    time_t time;
     double X[100];
     double Y[100];
     double Z[100];
@@ -11,6 +13,13 @@ struct SECOND {
     double Yfilt;
     double Zfilt;
 };
+
+typedef struct __attribute__((packed)) {
+    time_t time;
+    uint32_t X;
+    uint32_t Y;
+    uint32_t Z;
+} dfgm_data_sample_t;
 
 // Functions from the original filter code
 //void read_second(struct SECOND *ptr); // Unused
