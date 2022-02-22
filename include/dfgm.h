@@ -23,6 +23,7 @@
 #include <stdint.h>
 
 #include <FreeRTOS.h>
+#include "os_semphr.h"
 //#include "semphr.h"
 
 typedef xSemaphoreHandle mutex_t;

@@ -2,6 +2,7 @@
 #define DFGM_FILTER_H
 
 #include <time.h>
+#include <stdint.h>
 
 struct SECOND {
     time_t time;

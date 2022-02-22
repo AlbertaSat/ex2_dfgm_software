@@ -1,3 +1,5 @@
+// Binary test files only work with the main.c from commit 22159ff2
+
 #include "dfgm_converter.h"
 #include "HL_sci.h"
 //#include "hl_sys_common.h"
@@ -59,11 +61,6 @@ static uint8_t dfgmBuffer;
 static xQueueHandle dfgmQueue;
 static SemaphoreHandle_t tx_semphr;
 
-typedef struct __attribute__((packed)) {
-    time_t time;
-    dfgm_packet_t pkt;
-} dfgm_data_t;
-
 void dfgm_convert_mag(dfgm_packet_t *const data) {
 
     // convert part of raw data to magnetic field data
@@ -112,7 +109,7 @@ void save_packet(dfgm_data_t *data, char *filename) {
         dataSample.Y = (data->pkt).tup[i].Y;
         dataSample.Z = (data->pkt).tup[i].Z;
 
-        iErr = red_write(dataFile, data, sizeof(dfgm_data_sample_t));
+        iErr = red_write(dataFile, &dataSample, sizeof(dfgm_data_sample_t));
         if (iErr == -1) {
             printf("Unexpected error %d from red_write() in save_packet()\r\n", (int)red_errno);
             exit(red_errno);
@@ -131,6 +128,7 @@ void save_packet(dfgm_data_t *data, char *filename) {
 
 void print_file(char* filename) {
     int32_t iErr;
+    int bytes_read;
 
     // open file
     int32_t dataFile;
@@ -147,7 +145,7 @@ void print_file(char* filename) {
     if (bytes_read == -1) {
         printf("Unexpected error %d from red_read() in print_file\r\n", (int) red_errno);
         exit(red_errno);
-    } else if (bytes read == 0) {
+    } else if (bytes_read == 0) {
         printf("%s is empty!\n", filename);
     }
 
@@ -267,7 +265,7 @@ void dfgm_rx_task(void *pvParameters) {
 
         // converts part of raw data to magnetic field data
         dfgm_convert_mag(&(dat.pkt));
-        //RTCMK_GetUnix(&(dat.time));
+        RTCMK_GetUnix(&(dat.time));
 
         // converts part of raw data to house keeping data
         dfgm_convert_HK(&(dat.pkt));
@@ -296,13 +294,13 @@ void dfgm_rx_task(void *pvParameters) {
 
             // converts part of raw data to magnetic field data
             dfgm_convert_mag(&(dat.pkt));
-            //RTCMK_GetUnix(&(dat.time));
+            RTCMK_GetUnix(&(dat.time));
 
             // converts part of raw data to house keeping data
             dfgm_convert_HK(&(dat.pkt));
 
             // save data
-            save_packet(&(dat.pkt), "high_rate_DFGM_data.txt");
+            save_packet(&dat, "high_rate_DFGM_data.txt");
 
             secondsPassed += 1;
         }

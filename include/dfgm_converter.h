@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 #include "HL_sci.h"
+#include <time.h>
+
 /**
  * File name convention
  * ccc-xxxxxxxxxx
@@ -72,6 +74,11 @@ typedef struct __attribute__((__packed__)) {
     uint16 crc;
 } dfgm_packet_t;
 
+typedef struct __attribute__((packed)) {
+    time_t time;
+    dfgm_packet_t pkt;
+} dfgm_data_t;
+
 /**
  * @brief convert part of raw DFGM data to magnetic field data
  * 
@@ -91,7 +98,7 @@ void dfgm_convert_HK(dfgm_packet_t * const data);
  *
  * @param data DFGM packet to save
  */
-void save_packet(dfgm_packet_t *data, char *filename);
+void save_packet(dfgm_data_t *data, char *filename);
 
 /**
  * @brief read dfgm data file

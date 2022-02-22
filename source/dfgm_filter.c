@@ -19,6 +19,7 @@
  */
 
 #include "dfgm_filter.h"
+#include "dfgm.h"
 #include "FreeRTOS.h"
 #include "HL_sci.h"
 #include <stdio.h>
@@ -299,7 +300,7 @@ void save_second(struct SECOND *second, char * filename) {
     dataSample.Z = (*(uint32_t *)&Z);
 
     // Write sample to file
-    iErr = red_write(dataFile, data, sizeof(dfgm_data_sample_t));
+    iErr = red_write(dataFile, &dataSample, sizeof(dfgm_data_sample_t));
     if (iErr == -1) {
         printf("Unexpected error %d from red_write() in save_packet()\r\n", (int)red_errno);
         exit(red_errno);
@@ -337,6 +338,7 @@ void convert_100Hz_to_1Hz(char * filename100Hz, char * filename1Hz) {
     /*------------------- Read packets sample by sample ------------------*/
     dfgm_data_sample_t dataSample = {0};
     int EOF_reached = 0;
+    int bytes_read;
 
     // Read file sample by sample until EOF is reached
     while(1) {
@@ -368,7 +370,7 @@ void convert_100Hz_to_1Hz(char * filename100Hz, char * filename1Hz) {
             shift_sptr();
         } else {
             apply_filter();
-            save_second(sptr[1], filename1Hz)
+            save_second(sptr[1], filename1Hz);
             shift_sptr();
         }
     }
